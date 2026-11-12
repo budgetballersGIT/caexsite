@@ -1,6 +1,6 @@
 // Strip any trailing /api from env var before appending, so both
 // "https://api.example.com" and "https://api.example.com/api" work.
-const _apiRoot = (process.env.REACT_APP_API_URL || 'http://localhost:4000').replace(/\/api\/?$/, '');
+const _apiRoot = (process.env.REACT_APP_API_URL || 'http://localhost:4000').trim().replace(/\/api\/?$/, '');
 const API_BASE = `${_apiRoot}/api`;
 
 export { API_BASE };

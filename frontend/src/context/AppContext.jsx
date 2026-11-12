@@ -67,7 +67,7 @@ export function AppProvider({ children }) {
   }, [applyWallet]);
 
   const login = useCallback(async (username, password) => {
-    const base = (process.env.REACT_APP_API_URL || 'http://localhost:4000').replace(/\/api\/?$/, '');
+    const base = (process.env.REACT_APP_API_URL || 'http://localhost:4000').trim().replace(/\/api\/?$/, '');
     const res = await fetch(`${base}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
