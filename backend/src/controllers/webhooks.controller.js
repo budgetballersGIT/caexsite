@@ -44,12 +44,17 @@ async function alchemy(req, res) {
 
   try {
     const sig = req.headers['x-alchemy-signature'];
-    if (sig && process.env.ALCHEMY_SIGNING_KEY) {
-      const expected = crypto
-        .createHmac('sha256', process.env.ALCHEMY_SIGNING_KEY)
-        .update(JSON.stringify(req.body))
-        .digest('hex');
-      if (sig !== expected) return;
+    const signingKey = (process.env.ALCHEMY_SIGNING_KEY || '').trim();
+    if (signingKey) {
+      // Reject unsigned or wrongly signed requests; verify against the raw request bytes.
+      if (!sig || !req.rawBody) return;
+      const expected = crypto.createHmac('sha256', signingKey).update(req.rawBody).digest('hex');
+      const a = Buffer.from(String(sig));
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        console.error('Alchemy webhook: signature mismatch — check ALCHEMY_SIGNING_KEY.');
+        return;
+      }
     }
 
     if (req.body?.type !== 'ADDRESS_ACTIVITY') return;

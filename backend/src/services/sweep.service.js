@@ -208,7 +208,7 @@ async function sweepUtxo(kind, currency, userId) {
 }
 
 async function sweepEth(kind, userId) {
-  const phrase = process.env.ETH_HD_SEED;
+  const phrase = (process.env.ETH_HD_SEED || '').trim();
   if (!phrase) throw fail('ETH_HD_SEED not configured on the server.', 500);
   const apiKey = process.env.ALCHEMY_API_KEY;
   if (!apiKey) throw fail('ALCHEMY_API_KEY not configured on the server.', 500);

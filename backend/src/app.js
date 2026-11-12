@@ -39,7 +39,8 @@ app.use(cors({
 }));
 
 // Body parsing
-app.use(express.json());
+// Keep the raw bytes: webhook signatures (Alchemy) must be verified against exactly what was sent.
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Serve local uploads (avatar fallback when Cloudinary not configured)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
