@@ -43,7 +43,11 @@ app.use(express.json());
 
 // Serve local uploads (avatar fallback when Cloudinary not configured)
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
-app.use('/uploads', express.static(path.resolve(UPLOAD_DIR)));
+app.use('/uploads', (req, res, next) => {
+  // helmet defaults to same-origin, which blocks the frontend (another origin) from showing these images
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.resolve(UPLOAD_DIR)));
 
 // HTTP logging
 app.use(morgan('dev'));

@@ -76,7 +76,7 @@ export default function AdminOrders() {
               : orders.length === 0
                 ? <tr><td colSpan={7} className="admin-table-empty">No orders found</td></tr>
                 : orders.map(o => (
-                  <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/mario-dashboard/orders/${o.id}`, { state: { order: o } })}>
+                  <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/yoro-dashboard/orders/${o.id}`, { state: { order: o } })}>
                     <td style={{ fontWeight: 700 }}>#{o.frontendId || o.id}</td>
                     <td>{o.user?.username || o.user?.email || '—'}</td>
                     <td>{o._count?.items ?? o.itemCount ?? '—'}</td>
@@ -85,7 +85,7 @@ export default function AdminOrders() {
                     <td style={{ color: '#6c757d', fontSize: 12 }}>{new Date(o.placedAt).toLocaleDateString()}</td>
                     <td>
                       <button className="admin-btn admin-btn-secondary admin-btn-sm"
-                        onClick={e => { e.stopPropagation(); navigate(`/mario-dashboard/orders/${o.id}`, { state: { order: o } }); }}>
+                        onClick={e => { e.stopPropagation(); navigate(`/yoro-dashboard/orders/${o.id}`, { state: { order: o } }); }}>
                         View
                       </button>
                     </td>

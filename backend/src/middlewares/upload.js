@@ -27,5 +27,7 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE } });
 
 const uploadAvatar = upload.single('avatar');
 const uploadProductImage = upload.single('image');
+const MAX_PRODUCT_IMAGES = 8;
+const uploadProductImages = upload.array('images', MAX_PRODUCT_IMAGES);
 
-module.exports = { uploadAvatar, uploadProductImage };
+module.exports = { uploadAvatar, uploadProductImage, uploadProductImages, MAX_PRODUCT_IMAGES };

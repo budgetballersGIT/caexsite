@@ -177,7 +177,7 @@ export default function AdminUserDetail() {
               {(u.recentOrders || []).length === 0
                 ? <tr><td colSpan={4} className="admin-table-empty">No orders</td></tr>
                 : (u.recentOrders || []).map(o => (
-                  <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/mario-dashboard/orders/${o.id}`)}>
+                  <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/yoro-dashboard/orders/${o.id}`)}>
                     <td style={{ fontWeight: 700 }}>#{o.frontendId || o.id}</td>
                     <td>{fmt(o.totalAmount || 0)}</td>
                     <td><StatusBadge status={o.status} /></td>
@@ -240,7 +240,7 @@ export default function AdminUserDetail() {
               {(u.recentTickets || []).length === 0
                 ? <tr><td colSpan={4} className="admin-table-empty">No tickets</td></tr>
                 : (u.recentTickets || []).map(t => (
-                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/mario-dashboard/support/${t.id}`)}>
+                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/yoro-dashboard/support/${t.id}`)}>
                     <td style={{ fontWeight: 600 }}>{t.subject}</td>
                     <td><StatusBadge status={t.status} /></td>
                     <td><StatusBadge status={t.priority} /></td>

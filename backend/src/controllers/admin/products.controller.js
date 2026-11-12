@@ -41,6 +41,53 @@ function coerce(body) {
   };
 }
 
+const MAX_IMAGES = 8;
+
+// Accepts an array or a JSON string; returns a clean, de-duplicated list of URLs (max 8).
+function parseImages(v) {
+  if (v === undefined) return undefined;
+  let arr = v;
+  if (typeof v === 'string') { try { arr = JSON.parse(v); } catch { arr = []; } }
+  if (!Array.isArray(arr)) return [];
+  return [...new Set(arr.filter(u => typeof u === 'string' && u.trim()).map(u => u.trim()))].slice(0, MAX_IMAGES);
+}
+
+async function syncImages(tx, productId, images, name) {
+  await tx.productImage.deleteMany({ where: { productId } });
+  if (images.length) {
+    await tx.productImage.createMany({
+      data: images.map((url, i) => ({ productId, url, altText: name || '', sortOrder: i })),
+    });
+  }
+}
+
+// POST /api/admin/uploads/images — uploads up to 8 files, returns their URLs
+async function uploadImages(req, res) {
+  const files = req.files || [];
+  if (!files.length) return error(res, 'No images received.', 400);
+  const urls = [];
+  const useCloud = !!process.env.CLOUDINARY_CLOUD_NAME;
+  let cloudinary;
+  if (useCloud) {
+    cloudinary = require('cloudinary').v2;
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key:    process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+  const proto = req.get('x-forwarded-proto') || req.protocol;
+  for (const f of files) {
+    if (useCloud) {
+      const r = await cloudinary.uploader.upload(f.path, { folder: 'canna-express/products' });
+      urls.push(r.secure_url);
+    } else {
+      urls.push(`${proto}://${req.get('host')}/uploads/${f.filename}`);
+    }
+  }
+  return success(res, { urls });
+}
+
 function mapOpt(opt, idx, productId) {
   return {
     ...(productId !== undefined ? { productId } : {}),
@@ -149,7 +196,12 @@ async function createProduct(req, res) {
     }
   }
 
+  const images = parseImages(req.body.images) || [];
+  if (images.length) data.imageUrl = images[0];
+  else if (data.imageUrl) images.push(data.imageUrl);
+
   const product = await prisma.product.create({ data: { ...data, slug }, include: PRODUCT_INCLUDE });
+  await syncImages(prisma, product.id, images, data.name);
 
   if (opts && opts.length > 0) {
     await prisma.productOption.createMany({
@@ -169,9 +221,12 @@ async function updateProduct(req, res) {
   const opts = parseOpts(req.body.options);
   const raw  = coerce({ ...existing, ...req.body });
   if (req.body.name && !req.body.slug) raw.slug = slugify(req.body.name);
+  const images = parseImages(req.body.images);
+  if (images !== undefined) raw.imageUrl = images[0] || '';
 
   await prisma.$transaction(async tx => {
     await tx.product.update({ where: { id }, data: raw });
+    if (images !== undefined) await syncImages(tx, id, images, raw.name);
 
     if (opts !== undefined) {
       const keptIds = opts.filter(o => o.id).map(o => parseInt(o.id));
@@ -213,4 +268,4 @@ async function patchStock(req, res) {
   return success(res, formatProduct(product));
 }
 
-module.exports = { listProducts, getProductById, createProduct, updateProduct, removeProduct, patchStock };
+module.exports = { uploadImages, listProducts, getProductById, createProduct, updateProduct, removeProduct, patchStock };

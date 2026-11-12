@@ -105,7 +105,7 @@ export default function AccountSidebar() {
           <>
             <div className="account-sidebar-divider" />
             <a
-              href="/mario-dashboard"
+              href="/yoro-dashboard"
               className="account-nav-item account-nav-admin"
             >
               <AdminIcon />

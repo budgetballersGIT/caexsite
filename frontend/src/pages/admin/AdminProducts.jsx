@@ -50,7 +50,7 @@ export default function AdminProducts() {
           <h1 className="admin-page-title">Products</h1>
           <p className="admin-page-subtitle">{total} products</p>
         </div>
-        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/mario-dashboard/products/new')}>
+        <button className="admin-btn admin-btn-primary" onClick={() => navigate('/yoro-dashboard/products/new')}>
           + Add Product
         </button>
       </div>
@@ -91,7 +91,7 @@ export default function AdminProducts() {
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="admin-btn admin-btn-secondary admin-btn-sm"
-                          onClick={() => navigate(`/mario-dashboard/products/${p.id}/edit`)}>Edit</button>
+                          onClick={() => navigate(`/yoro-dashboard/products/${p.id}/edit`)}>Edit</button>
                         <button className="admin-btn admin-btn-danger admin-btn-sm"
                           onClick={() => setDelId(p.id)}>Delete</button>
                       </div>

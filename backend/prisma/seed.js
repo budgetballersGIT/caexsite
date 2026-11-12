@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 
@@ -370,12 +371,17 @@ async function main() {
   }
   console.log(`✓ FAQ seeded (${FAQ.length})`);
 
-  // 10. Admin user
-  const passwordHash = await bcrypt.hash('Admin@1234', 12);
+  // 10. Admin user (credentials come from env — never hardcode them)
+  const adminUsername = process.env.ADMIN_USERNAME;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminUsername || !adminPassword || adminPassword.length < 8) {
+    throw new Error('Set ADMIN_USERNAME and ADMIN_PASSWORD (min 8 chars) in .env before seeding.');
+  }
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   await prisma.user.upsert({
-    where:  { username: 'Mario' },
+    where:  { username: adminUsername },
     create: {
-      username: 'Mario',
+      username: adminUsername,
       passwordHash,
       role:     'admin',
       isActive: true,
@@ -383,6 +389,21 @@ async function main() {
     update: { passwordHash, role: 'admin', isActive: true },
   });
   console.log('✓ Admin user seeded');
+
+  // 11. Super admin (optional — only created when both vars are set)
+  const superUsername = process.env.SUPERADMIN_USERNAME;
+  const superPassword = process.env.SUPERADMIN_PASSWORD;
+  if (superUsername && superPassword) {
+    if (superPassword.length < 8) throw new Error('SUPERADMIN_PASSWORD must be at least 8 characters.');
+    if (superUsername === adminUsername) throw new Error('SUPERADMIN_USERNAME must differ from ADMIN_USERNAME.');
+    const superHash = await bcrypt.hash(superPassword, 12);
+    await prisma.user.upsert({
+      where:  { username: superUsername },
+      create: { username: superUsername, passwordHash: superHash, role: 'superadmin', isActive: true },
+      update: { passwordHash: superHash, role: 'superadmin', isActive: true },
+    });
+    console.log('✓ Super admin seeded');
+  }
 
   console.log('\nSeed completed successfully!');
 }

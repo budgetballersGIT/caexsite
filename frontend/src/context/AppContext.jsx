@@ -9,6 +9,7 @@ function normalizeProduct(p) {
     ...p,
     price: p.price != null ? `$${Number(p.price).toFixed(2)}` : '$0.00',
     image: p.imageUrl || p.image || '',
+    images: (Array.isArray(p.images) && p.images.length) ? p.images : [p.imageUrl || p.image].filter(Boolean),
     brand: p.brand?.name || p.brand || '',
     brandSlug: p.brand?.slug || p.brandSlug || '',
     category: String(p.category?.id || p.categoryId || p.category || ''),

@@ -56,7 +56,7 @@ export default function App() {
       <AppProvider>
         <Routes>
           {/* Admin dashboard — outside main layout, auth-gated */}
-          <Route path="/mario-dashboard" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route path="/yoro-dashboard" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminDashboard />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:id" element={<AdminOrderDetail />} />

@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { requireAuth, requireAdmin, requireSuperAdmin } = require('../middlewares/auth');
-const { uploadProductImage } = require('../middlewares/upload');
+const { uploadProductImage, uploadProductImages } = require('../middlewares/upload');
 const wrap = require('../utils/asyncHandler');
 
 const dashboardCtrl    = require('../controllers/admin/dashboard.controller');
@@ -42,6 +42,7 @@ router.patch('/orders/:id/status',   wrap(ordersCtrl.updateOrderStatus));
 router.patch('/orders/:id/tracking', wrap(ordersCtrl.updateOrderTracking));
 
 // ─── Products ────────────────────────────────────────────────────────────────
+router.post('/uploads/images',        uploadProductImages, wrap(productsCtrl.uploadImages));
 router.get('/products',              wrap(productsCtrl.listProducts));
 router.post('/products',             uploadProductImage, wrap(productsCtrl.createProduct));
 router.get('/products/:id',          wrap(productsCtrl.getProductById));

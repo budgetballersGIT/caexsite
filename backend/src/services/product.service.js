@@ -34,6 +34,7 @@ function formatProduct(p, markupPct = 0) {
     reviewCount:  p.reviewCount,
     optionsCount: p.optionsCount,
     imageUrl:     p.imageUrl,
+    images:       (p.images && p.images.length) ? p.images.map(i => i.url) : (p.imageUrl ? [p.imageUrl] : []),
     isActive:     p.isActive,
     isFeatured:   p.isFeatured,
     isTrending:   p.isTrending,

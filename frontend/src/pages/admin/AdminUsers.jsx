@@ -82,7 +82,7 @@ export default function AdminUsers() {
               : users.length === 0
                 ? <tr><td colSpan={7} className="admin-table-empty">No users found</td></tr>
                 : users.map(u => (
-                  <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/mario-dashboard/users/${u.id}`)}>
+                  <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/yoro-dashboard/users/${u.id}`)}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="admin-avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{(u.username?.[0] || '?').toUpperCase()}</div>
@@ -94,7 +94,7 @@ export default function AdminUsers() {
                     <td>{fmt(u.balance || 0)}</td>
                     <td>{u._count?.orders ?? u.orderCount ?? 0}</td>
                     <td style={{ color: '#6c757d', fontSize: 12 }}>{new Date(u.createdAt).toLocaleDateString()}</td>
-                    <td><button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={e => { e.stopPropagation(); navigate(`/mario-dashboard/users/${u.id}`); }}>View</button></td>
+                    <td><button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={e => { e.stopPropagation(); navigate(`/yoro-dashboard/users/${u.id}`); }}>View</button></td>
                   </tr>
                 ))
             }

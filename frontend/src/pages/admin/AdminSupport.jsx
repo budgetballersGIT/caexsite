@@ -94,14 +94,14 @@ export default function AdminSupport() {
               : tickets.length === 0
                 ? <tr><td colSpan={7} className="admin-table-empty">No tickets found</td></tr>
                 : tickets.map(t => (
-                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/mario-dashboard/support/${t.id}`)}>
+                  <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/yoro-dashboard/support/${t.id}`)}>
                     <td style={{ fontWeight: 600, maxWidth: 200 }}>{t.subject}</td>
                     <td style={{ color: '#6c757d' }}>{t.user?.username || t.user?.email || '—'}</td>
                     <td><StatusBadge status={t.status} /></td>
                     <td><StatusBadge status={t.priority} /></td>
                     <td style={{ color: '#6c757d' }}>{t.assignee?.username || '—'}</td>
                     <td style={{ color: '#6c757d', fontSize: 12 }}>{new Date(t.createdAt).toLocaleDateString()}</td>
-                    <td><button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={e => { e.stopPropagation(); navigate(`/mario-dashboard/support/${t.id}`); }}>Open</button></td>
+                    <td><button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={e => { e.stopPropagation(); navigate(`/yoro-dashboard/support/${t.id}`); }}>Open</button></td>
                   </tr>
                 ))
             }

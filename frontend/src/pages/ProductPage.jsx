@@ -34,9 +34,11 @@ export default function ProductPage() {
   const [qty, setQty]           = useState(1);
   const [optionOpen, setOptionOpen] = useState(false);
   const [optionIdx, setOptionIdx]   = useState(0);
+  const [imgIdx, setImgIdx]         = useState(0);
 
   useEffect(() => {
     setLoading(true);
+    setImgIdx(0);
     api.get(`/products/${id}`)
       .then(data => {
         const p = data.product || data;
@@ -95,9 +97,34 @@ export default function ProductPage() {
         <div className="pd-wrap">
           <div className="pd-hero">
             <div className="pd-gallery">
-              <div className="pd-image">
-                <img src={product.image} alt={product.name} onError={e => { e.currentTarget.style.opacity = '.25'; }} />
-              </div>
+              {(() => {
+                const imgs = product.images && product.images.length ? product.images : [product.image];
+                const n = imgs.length;
+                const go = d => setImgIdx(i => (i + d + n) % n);
+                return (
+                  <>
+                    <div className="pd-image pd-slider">
+                      <img src={imgs[imgIdx] || imgs[0]} alt={product.name} onError={e => { e.currentTarget.style.opacity = '.25'; }} />
+                      {n > 1 && (
+                        <>
+                          <button type="button" className="pd-slide-btn prev" onClick={() => go(-1)} aria-label="Previous image">‹</button>
+                          <button type="button" className="pd-slide-btn next" onClick={() => go(1)} aria-label="Next image">›</button>
+                          <div className="pd-slide-count">{imgIdx + 1} / {n}</div>
+                        </>
+                      )}
+                    </div>
+                    {n > 1 && (
+                      <div className="pd-thumbs">
+                        {imgs.map((u, i) => (
+                          <button type="button" key={u + i} className={`pd-thumb${i === imgIdx ? ' active' : ''}`} onClick={() => setImgIdx(i)}>
+                            <img src={u} alt="" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <button className="pd-report"><ImageIcon /> Report missing/incorrect image.</button>
             </div>
 

@@ -12,8 +12,9 @@ export default function AdminProductForm() {
   const [options, setOptions]     = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands]       = useState([]);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [images, setImages]     = useState([]);   // ordered URLs; first = cover
+  const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput]   = useState('');
   const [loading, setLoading]     = useState(isEdit);
   const [saving, setSaving]       = useState(false);
   const [err, setErr]             = useState(null);
@@ -35,7 +36,7 @@ export default function AdminProductForm() {
           brandId: p.brandId || '', imageUrl: p.imageUrl || '',
         });
         setOptions(p.options || []);
-        setImagePreview(p.imageUrl || '');
+        setImages(p.images && p.images.length ? p.images : (p.imageUrl ? [p.imageUrl] : []));
       }
       setLoading(false);
     }).catch(e => { setErr(e.message); setLoading(false); });
@@ -43,12 +44,38 @@ export default function AdminProductForm() {
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
-  const handleImage = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+  const MAX_IMAGES = 8;
+
+  const handleImages = async e => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    const room = MAX_IMAGES - images.length;
+    if (room <= 0) { setErr(`Maximum ${MAX_IMAGES} images per product.`); return; }
+    setUploading(true); setErr(null);
+    try {
+      const fd = new FormData();
+      files.slice(0, room).forEach(f => fd.append('images', f));
+      const data = await adminFetch('/admin/uploads/images', { method: 'POST', body: fd, isFormData: true });
+      setImages(imgs => [...imgs, ...data.urls].slice(0, MAX_IMAGES));
+      if (files.length > room) setErr(`Only ${room} more image(s) fit — maximum is ${MAX_IMAGES}.`);
+    } catch (e2) { setErr(e2.message); }
+    finally { setUploading(false); }
   };
+
+  const addImageUrl = () => {
+    const u = urlInput.trim();
+    if (!u) return;
+    if (images.length >= MAX_IMAGES) { setErr(`Maximum ${MAX_IMAGES} images per product.`); return; }
+    setImages(imgs => imgs.includes(u) ? imgs : [...imgs, u]);
+    setUrlInput('');
+  };
+  const removeImage = i => setImages(imgs => imgs.filter((_, idx) => idx !== i));
+  const moveImage = (i, d) => setImages(imgs => {
+    const j = i + d;
+    if (j < 0 || j >= imgs.length) return imgs;
+    const next = [...imgs]; [next[i], next[j]] = [next[j], next[i]]; return next;
+  });
 
   const addOption = () => setOptions(o => [...o, { id: null, label: '', priceModifier: 0, stock: 0 }]);
   const setOpt = (i, k, v) => setOptions(o => o.map((op, idx) => idx === i ? { ...op, [k]: v } : op));
@@ -60,19 +87,9 @@ export default function AdminProductForm() {
     try {
       const url    = isEdit ? `/admin/products/${id}` : '/admin/products';
       const method = isEdit ? 'PUT' : 'POST';
-      const body   = { ...form, options };
-      if (imageFile) {
-        const fd = new FormData();
-        Object.entries(body).forEach(([k, v]) => {
-          if (k === 'options') fd.append(k, JSON.stringify(v));
-          else fd.append(k, v);
-        });
-        fd.append('image', imageFile);
-        await adminFetch(url, { method, body: fd, isFormData: true });
-      } else {
-        await adminFetch(url, { method, body });
-      }
-      navigate('/mario-dashboard/products');
+      const body   = { ...form, options, images, imageUrl: images[0] || '' };
+      await adminFetch(url, { method, body });
+      navigate('/yoro-dashboard/products');
     } catch (e) { setErr(e.message); }
     finally { setSaving(false); }
   };
@@ -145,17 +162,37 @@ export default function AdminProductForm() {
           </div>
 
           <div>
-            {/* Image */}
+            {/* Images */}
             <div className="admin-card" style={{ marginBottom: 16 }}>
-              <div className="admin-card-title">Product Image</div>
-              {imagePreview && <img src={imagePreview} alt="preview" className="admin-img-preview" style={{ width: 120, height: 120, marginBottom: 12 }} />}
-              <input type="file" accept="image/*" onChange={handleImage} style={{ fontSize: 13 }} />
-              {!imageFile && (
-                <div className="admin-form-group" style={{ marginTop: 12 }}>
-                  <label className="admin-label">Or image URL</label>
-                  <input className="admin-input" value={form.imageUrl} onChange={e => { set('imageUrl', e.target.value); setImagePreview(e.target.value); }} placeholder="https://…" />
+              <div className="admin-card-title">Product Images ({images.length}/{MAX_IMAGES})</div>
+              <div style={{ color: '#6c757d', fontSize: 12, marginBottom: 10 }}>
+                The first image is the cover. Shoppers can slide through all of them on the product page.
+              </div>
+              {images.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 10, marginBottom: 12 }}>
+                  {images.map((url, i) => (
+                    <div key={url + i} style={{ border: '1px solid #dee2e6', borderRadius: 8, padding: 6, textAlign: 'center' }}>
+                      <img src={url} alt={`img ${i + 1}`} style={{ width: '100%', height: 80, objectFit: 'contain' }} />
+                      <div style={{ fontSize: 11, color: i === 0 ? '#2e7d32' : '#6c757d', fontWeight: 600 }}>{i === 0 ? 'Cover' : `#${i + 1}`}</div>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                        <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" disabled={i === 0} onClick={() => moveImage(i, -1)}>←</button>
+                        <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)}>→</button>
+                        <button type="button" className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => removeImage(i)}>✕</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImages}
+                disabled={uploading || images.length >= MAX_IMAGES} style={{ fontSize: 13 }} />
+              {uploading && <div style={{ fontSize: 12, color: '#6c757d', marginTop: 6 }}>Uploading…</div>}
+              <div className="admin-form-group" style={{ marginTop: 12 }}>
+                <label className="admin-label">Or add an image URL</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="admin-input" value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://…" />
+                  <button type="button" className="admin-btn admin-btn-secondary" onClick={addImageUrl}>Add</button>
+                </div>
+              </div>
             </div>
 
             {/* Options */}
