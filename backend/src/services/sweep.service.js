@@ -11,6 +11,31 @@ const { buildDerSig, CHAIN, COIN_TYPE, ADDR_SETTING } = require('../controllers/
 // they run doesn't matter. Each pays its own network fee out of its share.
 
 const DUST = 546;
+
+// BlockCypher's free plan allows ~3 requests/second. A sweep makes several calls back to
+// back, so space them out (one at a time, >= 400 ms apart) and retry a 429 with a back-off.
+const BC_MIN_GAP_MS = 400;
+let bcLastCall = 0;
+let bcQueue = Promise.resolve();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function bcRequest(method, ...args) {
+  const run = async () => {
+    for (let attempt = 0; ; attempt++) {
+      const wait = bcLastCall + BC_MIN_GAP_MS - Date.now();
+      if (wait > 0) await sleep(wait);
+      bcLastCall = Date.now();
+      try {
+        return await axios[method](...args);
+      } catch (e) {
+        if (e.response?.status === 429 && attempt < 3) { await sleep(2000 * (attempt + 1)); continue; }
+        throw e;
+      }
+    }
+  };
+  const p = bcQueue.then(run, run);
+  bcQueue = p.catch(() => {});
+  return p;
+}
 const RESERVE_ADDRESS_KEY = {
   BTC: 'super_btc_commission_address', LTC: 'super_ltc_commission_address',
   DOGE: 'super_doge_commission_address', ETH: 'super_eth_commission_address',
@@ -93,7 +118,7 @@ function errorMessage(e) {
 async function sweepUtxo(kind, currency, userId) {
   if (!['BTC', 'LTC', 'DOGE'].includes(currency)) throw fail('Invalid currency', 422);
 
-  const TOKEN = process.env.BLOCKCYPHER_TOKEN;
+  const TOKEN = (process.env.BLOCKCYPHER_TOKEN || '').trim();
   if (!TOKEN) throw fail('BLOCKCYPHER_TOKEN not configured.', 500);
 
   const phrase = await getSetting('btc_hd_seed') || process.env.BTC_HD_SEED;
@@ -103,7 +128,7 @@ async function sweepUtxo(kind, currency, userId) {
   const chain    = CHAIN[currency];
   const coinType = COIN_TYPE[currency];
 
-  const chainInfo      = await axios.get(`https://api.blockcypher.com/v1/${chain}?token=${TOKEN}`);
+  const chainInfo      = await bcRequest('get', `https://api.blockcypher.com/v1/${chain}?token=${TOKEN}`);
   const mediumFeePerKb = chainInfo.data.medium_fee_per_kb || chainInfo.data.low_fee_per_kb || 20000;
 
   const deposits = await prisma.deposit.findMany({ where: eligibleWhere(kind, currency) });
@@ -114,7 +139,7 @@ async function sweepUtxo(kind, currency, userId) {
 
   for (const dep of deposits) {
     try {
-      const balRes  = await axios.get(`https://api.blockcypher.com/v1/${chain}/addrs/${dep.address}/balance?token=${TOKEN}`);
+      const balRes  = await bcRequest('get', `https://api.blockcypher.com/v1/${chain}/addrs/${dep.address}/balance?token=${TOKEN}`);
       const balance = balRes.data.balance || 0;
       if (balance === 0) {
         // Deposits credited before commissions existed and already emptied: settle them
@@ -139,7 +164,7 @@ async function sweepUtxo(kind, currency, userId) {
       for (let attempt = 0; attempt < 5; attempt++) {
         send = balance - keep - fee;
         if (send < DUST) break;
-        newTxRes = await axios.post(
+        newTxRes = await bcRequest('post', 
           `https://api.blockcypher.com/v1/${chain}/txs/new?token=${TOKEN}`,
           { inputs: [{ addresses: [dep.address] }], outputs: [{ addresses: [destination], value: send }], preference: 'low' }
         );
@@ -160,7 +185,7 @@ async function sweepUtxo(kind, currency, userId) {
       const pubKey = wallet.publicKey.slice(2);
       const { tx, tosign } = newTxRes.data;
       const signatures = tosign.map(hash => buildDerSig(wallet.signingKey, hash));
-      const sendRes = await axios.post(
+      const sendRes = await bcRequest('post', 
         `https://api.blockcypher.com/v1/${chain}/txs/send?token=${TOKEN}`,
         { tx, tosign, signatures, pubkeys: tosign.map(() => pubKey) }
       );
