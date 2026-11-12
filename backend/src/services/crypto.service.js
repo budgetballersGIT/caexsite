@@ -3,8 +3,8 @@ const nodeCrypto = require('crypto');
 const { HDNodeWallet } = require('ethers');
 const prisma = require('../db');
 
-const TOKEN        = process.env.BLOCKCYPHER_TOKEN;
-const PUBLIC_URL   = process.env.RAILWAY_PUBLIC_URL;
+const TOKEN        = (process.env.BLOCKCYPHER_TOKEN || '').trim();
+const PUBLIC_URL   = (process.env.RAILWAY_PUBLIC_URL || '').trim().replace(/\/+$/, '');
 const CALLBACK_URL = PUBLIC_URL ? `${PUBLIC_URL}/api/webhooks/blockcypher` : null;
 
 const CHAIN    = { BTC: 'btc/main', LTC: 'ltc/main', DOGE: 'doge/main' };
@@ -88,7 +88,7 @@ async function generateDepositAddress(currency, depositId) {
     }
 
     case 'ETH': {
-      const phrase = process.env.ETH_HD_SEED;
+      const phrase = (process.env.ETH_HD_SEED || '').trim();
       if (!phrase) throw Object.assign(new Error('ETH_HD_SEED not configured.'), { status: 500 });
 
       const wallet  = HDNodeWallet.fromPhrase(phrase, undefined, `m/44'/60'/0'/0/${depositId}`);
