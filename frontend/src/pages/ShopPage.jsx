@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import ProductTile from '../components/ProductTile';
+import ProductRow from '../components/ProductRow';
 import CartDrawer from '../components/CartDrawer';
 import FilterPanel from '../components/FilterPanel';
 import CategoryNav from '../components/CategoryNav';
@@ -36,7 +38,7 @@ const GridIcon = () => (
 );
 
 export default function ShopPage() {
-  const { addToCart, openQuickAdd, wishedIds, toggleWish, search, activeCategory, setActiveCategory, normalizeProduct } = useApp();
+  const { addToCart, openQuickAdd, wishedIds, toggleWish, search, activeCategory, setActiveCategory, normalizeProduct, categories } = useApp();
   const navigate = useNavigate();
 
   const [filterOpen, setFilterOpen]   = useState(false);
@@ -73,7 +75,7 @@ export default function ShopPage() {
     try {
       const data = await api.get('/products', params);
       const raw = data.products || data || [];
-      setProducts(raw.map(normalizeProduct));
+      setProducts(raw.map(r => ({ ...normalizeProduct(r), catSlug: r.category?.slug || '', catLabel: r.category?.label || r.category?.name || '' })));
       setTotal(data.total || raw.length);
       if (data.brands) setBrands(data.brands);
     } catch (e) {
@@ -104,6 +106,22 @@ export default function ShopPage() {
   const stashProducts = products.filter(p => wishedIds.has(p.id));
   const visibleProducts = stashMode ? stashProducts : products;
   const totalOptions = visibleProducts.reduce((sum, p) => sum + (p.options || 1), 0);
+
+  // Default view (no category, search, filter or sort): one horizontal row per category.
+  const hasFilters = !!(filters.selectedBrands?.length || filters.maxPrice || (filters.selectedRating && filters.selectedRating !== 'Any'));
+  const showRows = !stashMode && viewMode === 'grid' && !activeCategory && !search && !inStockOnly && !hasFilters && sortOrder === 'none';
+
+  const rows = useMemo(() => {
+    const map = new Map();
+    visibleProducts.forEach(p => {
+      const key = p.catSlug || '__other';
+      if (!map.has(key)) map.set(key, { slug: p.catSlug, label: p.catLabel || 'More products', items: [] });
+      map.get(key).items.push(p);
+    });
+    const order = (categories || []).map(c => c.slug);
+    const rank = r => { const i = order.indexOf(r.slug); return i < 0 ? 999 : i; };
+    return [...map.values()].sort((a, b) => rank(a) - rank(b));
+  }, [visibleProducts, categories]);
 
   return (
     <>
@@ -180,19 +198,45 @@ export default function ShopPage() {
               )}
             </div>
           ) : (
-            <div className={`products-grid${viewMode === 'list' ? ' list-view' : ''}`}>
+            showRows ? (
+              <div className="prow-list">
+                {rows.map(r => (
+                  <ProductRow
+                    key={r.slug || '__other'}
+                    title={r.label}
+                    products={r.items.slice(0, 14)}
+                    onSeeAll={r.slug ? () => setActiveCategory(r.slug) : null}
+                    onAddToCart={openQuickAdd}
+                    wishedIds={wishedIds}
+                    onWishToggle={toggleWish}
+                  />
+                ))}
+              </div>
+            ) : (
+            <div className={`products-grid${viewMode === 'list' ? ' list-view' : ' tile-grid'}`}>
               {visibleProducts.map((product, i) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={openQuickAdd}
-                  delay={Math.min(i * 40, 400)}
-                  wished={wishedIds.has(product.id)}
-                  onWishToggle={toggleWish}
-                  onNavigate={() => navigate(`/product/${product.id}`)}
-                />
+                viewMode === 'list' ? (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={openQuickAdd}
+                    delay={Math.min(i * 40, 400)}
+                    wished={wishedIds.has(product.id)}
+                    onWishToggle={toggleWish}
+                    onNavigate={() => navigate(`/product/${product.id}`)}
+                  />
+                ) : (
+                  <ProductTile
+                    key={product.id}
+                    product={product}
+                    onAddToCart={openQuickAdd}
+                    wished={wishedIds.has(product.id)}
+                    onWishToggle={toggleWish}
+                  />
+                )
               ))}
             </div>
+            )
           )}
         </div>
       </main>
