@@ -29,12 +29,14 @@ const app = express();
 app.use(helmet());
 
 // CORS
+// FRONTEND_URL may hold several comma-separated origins (e.g. the domain, its www form and the
+// Railway URL). Trailing slashes and stray whitespace are ignored.
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://chadsflooring.xyz',
-    'https://www.chadsflooring.xyz',
-  ],
+  origin: ALLOWED_ORIGINS,
   credentials: true,
 }));
 

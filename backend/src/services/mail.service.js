@@ -1,3 +1,6 @@
+// First entry of FRONTEND_URL (it may be a comma-separated list), without trailing slash.
+const primaryFrontendUrl = () => (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/+$/, '');
+
 const nodemailer = require('nodemailer');
 
 const SMTP_CONFIGURED = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -28,7 +31,7 @@ async function sendMail(to, subject, html) {
 }
 
 async function sendPasswordResetEmail(email, resetToken) {
-  const url = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+  const url = `${primaryFrontendUrl()}/reset-password?token=${resetToken}`;
   const html = `
     <h2>Reset your password</h2>
     <p>Click the link below to reset your password. It expires in 1 hour.</p>
@@ -42,7 +45,7 @@ async function sendWelcomeEmail(email, username) {
   const html = `
     <h2>Welcome to Canna Express, ${username}!</h2>
     <p>Your account has been created successfully.</p>
-    <a href="${process.env.FRONTEND_URL}">Start shopping</a>
+    <a href="${primaryFrontendUrl()}">Start shopping</a>
   `;
   await sendMail(email, 'Welcome to Canna Express', html);
 }
