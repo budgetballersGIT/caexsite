@@ -39,6 +39,7 @@ async function getDashboard(req, res, next) {
         COUNT(*) FILTER (WHERE DATE("createdAt") = CURRENT_DATE)::int AS "newToday",
         COUNT(*) FILTER (WHERE "lastLoginAt" >= NOW() - INTERVAL '30 days')::int AS active
       FROM "User"
+      WHERE role <> 'superadmin'
     `,
     prisma.$queryRaw`
       SELECT
@@ -110,7 +111,7 @@ async function getDashboard(req, res, next) {
         TO_CHAR(gs::date, 'YYYY-MM-DD') AS date,
         COUNT(u.id)::int AS count
       FROM generate_series(NOW() - INTERVAL '6 days', NOW(), INTERVAL '1 day') AS gs
-      LEFT JOIN "User" u ON DATE(u."createdAt") = gs::date
+      LEFT JOIN "User" u ON DATE(u."createdAt") = gs::date AND u.role <> 'superadmin'
       GROUP BY gs::date
       ORDER BY gs::date
     `,

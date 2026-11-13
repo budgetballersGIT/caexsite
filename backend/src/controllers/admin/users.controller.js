@@ -6,6 +6,10 @@ const { hashPassword } = require('../../services/auth.service');
 const balanceService = require('../../services/balance.service');
 const { getCachedUsdPrice } = require('../../services/price.service');
 
+// Super admin accounts are invisible to, and untouchable by, plain admins.
+const isSuper = req => req.user?.role === 'superadmin';
+const hiddenFrom = (req, user) => !isSuper(req) && user?.role === 'superadmin';
+
 const TIERS = [
   { name: 'basic',     minSpent: 0    },
   { name: 'preferred', minSpent: 1000 },
@@ -37,6 +41,10 @@ async function listUsers(req, res, next) {
 
     const where = {};
     if (role !== undefined)     where.role     = role;
+    if (!isSuper(req)) {
+      // plain admins never see super admins, even when filtering by role
+      where.role = role === 'superadmin' ? '__none__' : (role !== undefined ? role : { not: 'superadmin' });
+    }
     if (isActive !== undefined) where.isActive = isActive === 'true';
     if (search) {
       where.username = { contains: search, mode: 'insensitive' };
@@ -87,6 +95,10 @@ async function listUsers(req, res, next) {
 async function getUserById(req, res, next) {
   try {
   const id = parseInt(req.params.id);
+  if (!isSuper(req)) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+    if (target?.role === 'superadmin') return error(res, 'User not found.', 404);
+  }
 
   const user = await prisma.user.findUnique({
     where: { id },
@@ -170,9 +182,10 @@ async function updateUser(req, res, next) {
   try {
   const id = parseInt(req.params.id);
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return error(res, 'User not found.', 404);
+  if (!user || hiddenFrom(req, user)) return error(res, 'User not found.', 404);
 
   const { role, isActive, markupPct, username } = req.body;
+  if (role === 'superadmin' && !isSuper(req)) return error(res, 'Only a super admin can assign that role.', 403);
   const data = {};
   if (role      !== undefined) data.role      = role;
   if (isActive  !== undefined) data.isActive  = isActive;
@@ -198,7 +211,7 @@ async function banUser(req, res, next) {
   try {
   const id = parseInt(req.params.id);
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return error(res, 'User not found.', 404);
+  if (!user || hiddenFrom(req, user)) return error(res, 'User not found.', 404);
 
   const newIsActive = !user.isActive;
   await prisma.user.update({ where: { id }, data: { isActive: newIsActive } });
@@ -240,7 +253,7 @@ async function adjustWallet(req, res, next) {
   }
 
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return error(res, 'User not found.', 404);
+  if (!user || hiddenFrom(req, user)) return error(res, 'User not found.', 404);
 
   const usd = price ? balanceService.round2(amt * price) : 0;
 
@@ -306,7 +319,7 @@ async function resetPassword(req, res, next) {
     if (password.length < 6) return error(res, 'Password must be at least 6 characters.', 400);
 
     const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) return error(res, 'User not found.', 404);
+    if (!user || hiddenFrom(req, user)) return error(res, 'User not found.', 404);
 
     const passwordHash = await hashPassword(password);
     await prisma.user.update({ where: { id }, data: { passwordHash } });
